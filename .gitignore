@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# uv
+.uv-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project: experiment artifacts (large, regenerable, not for VCS)
+data/traces/
+data/chunks/
+data/interventions/
+data/calibration/
+wandb/
+mlruns/
+
+# Project: SQLite caches and indexes
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.cache/
+
+# Logs and ad-hoc
+*.log
+scratch/
