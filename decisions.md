@@ -95,10 +95,15 @@ Approved 2026-05-14 at the schema review.
   - **How to apply:** Add new runtime deps with `uv add <pkg>`, dev deps with `uv add --dev <pkg>`. Let the resolver pick versions; do not set upper bounds in `pyproject.toml` unless a known incompatibility forces it. Reproduce another machine's environment with `uv sync`.
   - **Revisit if:** a transitive resolution conflict forces a temporary upper bound — in which case the bound is documented in `pyproject.toml` with a comment pointing to the conflict, and lifted once resolved.
 
-- **D23 — Cache miss on replay surfaces as a custom exception:** Strict-replay cache misses raise `ReplayCacheMissError` (to be defined in `src/cache/exceptions.py` when the prompt-cache module lands in step 5d). The replayer does **not** catch this exception; a miss propagates as a hard replay failure with the missing `prompt_hash` and full request payload attached. No `None` sentinels, no `Optional[Response]` returns.
+- **D23 — Cache miss on replay surfaces as a custom exception:** Strict-replay cache misses raise `ReplayCacheMissError` (to be defined in `src/traceaudit/cache/exceptions.py` when the prompt-cache module lands in step 5d). The replayer does **not** catch this exception; a miss propagates as a hard replay failure with the missing `prompt_hash` and full request payload attached. No `None` sentinels, no `Optional[Response]` returns.
   - **Reasoning (user):** "Sentinels get swallowed by accident and replay determinism is too important to lose to a None-check that someone forgot."
   - **Companion to:** D21 (hybrid determinism contract). Together they say: cache hit → byte-exact response; cache miss in strict-replay mode → loud failure, no silent re-query.
-  - **Where it lives:** `src/cache/exceptions.py` (will be created in step 5d). The decision is recorded now so `io.py` and downstream modules use a consistent error-handling pattern from the start.
+  - **Where it lives:** `src/traceaudit/cache/exceptions.py` (will be created in step 5d). The decision is recorded now so `io.py` and downstream modules use a consistent error-handling pattern from the start.
+  - **Revisit if:** never.
+
+- **D24 (2026-05-14):** Project namespace is `traceaudit`. The top-level `trace` package name collides with the Python stdlib `trace` module under editable installs — `uv sync` adds `src/` to `sys.path` via a `.pth` file appended after stdlib, so `import trace` would resolve to stdlib, not ours. All project modules live under `traceaudit.*`. Rationale: avoid import-resolution ambiguity for any contributor or CI environment. Verified by inspecting `/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/trace.py`.
+  - **Resolves:** the import-collision discovered between commits 2 and 5a.
+  - **How to apply:** all imports use `traceaudit.*`; the `traceaudit` package root re-exports nothing (empty `__all__`) — consumers import from the leaf module they need.
   - **Revisit if:** never.
 
 ## Deferred items (known limitations, schema v0.1.x)

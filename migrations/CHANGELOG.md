@@ -1,6 +1,6 @@
 # Schema CHANGELOG
 
-Logs every change to the trace schema in `src/trace/schema.py`. Bump the version
+Logs every change to the trace schema in `src/traceaudit/trace/schema.py`. Bump the version
 in the same commit as the change.
 
 Semantic versioning:

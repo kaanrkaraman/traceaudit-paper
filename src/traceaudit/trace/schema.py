@@ -88,13 +88,13 @@ DESIGN CHOICES (and why)
 WHAT THIS MODULE DOES NOT INCLUDE
 ------------------------------------------------------------------------------
 
-- I/O. Parquet write/read lives in `src/trace/io.py` (Phase 0, after approval).
+- I/O. Parquet write/read lives in `src/traceaudit/trace/io.py` (Phase 0, after approval).
 - Recorder hooks. The recorder wraps an agent runtime; it lives in
-  `src/trace/recorder.py`.
+  `src/traceaudit/trace/recorder.py`.
 - Replayer logic. Determinism enforcement and cache wiring live in
-  `src/trace/replayer.py`.
+  `src/traceaudit/trace/replayer.py`.
 - Intervention operators. `remove`, `paraphrase`, `distract` live in
-  `src/intervention/` from Phase 1 onwards.
+  `src/traceaudit/intervention/` from Phase 1 onwards.
 
 Those modules will import from this one; this module imports only stdlib and
 Pydantic v2.

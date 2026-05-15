@@ -2,7 +2,7 @@
 
 **Status:** Proposed 2026-05-14, awaiting Phase 0 milestone approval.
 **Resolves:** `open_questions.md` Q6.
-**Companion:** `src/trace/schema.py`.
+**Companion:** `src/traceaudit/trace/schema.py`.
 
 ## TL;DR
 
@@ -56,7 +56,7 @@ Partition columns (`system_id`, `dataset_id`) are encoded in Hive-style director
 
 ## Per-table schema sketches
 
-(Field names match `src/trace/schema.py`. Types are PyArrow logical types.)
+(Field names match `src/traceaudit/trace/schema.py`. Types are PyArrow logical types.)
 
 ### `traces.parquet`
 - `trace_id` `string` (primary, deterministic hash — see `open_questions.md` Q7)
@@ -158,7 +158,7 @@ Across HotpotQA-500, MuSiQue-500, 2WikiMultiHopQA-500, Bamboogle ~125, and any h
 
 ## Versioning
 
-- `SCHEMA_VERSION` constant in `src/trace/schema.py`. Bumped on any breaking change.
+- `SCHEMA_VERSION` constant in `src/traceaudit/trace/schema.py`. Bumped on any breaking change.
 - The replayer refuses traces with a different *major* schema version. Minor bumps (additive fields with defaults) are forward-compatible.
 - A `migrations/` folder will hold one Python script per breaking version transition. Not needed in Phase 0.
 
