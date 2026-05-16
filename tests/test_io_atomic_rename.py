@@ -87,3 +87,69 @@ def test_second_write_failure_preserves_committed_first_trace(
         # All committed parquet files belong to trace1.
         # (Same partition because the fixture uses the same system_id/dataset_id.)
         assert ".partial" not in f.name
+
+
+def test_stale_partial_on_cold_store_is_invisible(tmp_path: Path) -> None:
+    """A `.partial` orphaned by a crashed first-write must not be opened.
+
+    The reader resolves `<file>.parquet` by exact name (never globs). A
+    sibling `<file>.parquet.partial` containing garbage bytes is left on
+    disk, and `read_trace` must raise `FileNotFoundError` from the missing
+    committed `traces.parquet`, never attempt to parse the partial.
+    """
+    store = TraceStore(tmp_path)
+    system_id, dataset_id = "test-system", "test-dataset"
+    partition = store._partition_dir(system_id, dataset_id)
+    partition.mkdir(parents=True, exist_ok=True)
+
+    stale = partition / "traces.parquet.partial"
+    stale.write_bytes(b"this is not a valid parquet file")
+
+    with pytest.raises(FileNotFoundError):
+        store.read_trace(
+            "any-trace-id", system_id=system_id, dataset_id=dataset_id
+        )
+
+    # Reader did not delete or rename the orphan; cleanup is out of scope.
+    assert stale.exists()
+
+
+def test_committed_parquet_with_stale_partial_returns_committed_state(
+    tmp_path: Path, synthetic_trace_and_chunks
+) -> None:
+    """Coexisting `<file>.parquet` and `<file>.parquet.partial`: reader wins committed.
+
+    Simulates the steady state after a crashed second-write: every table in
+    the partition has both the committed `.parquet` and an orphan `.partial`
+    next to it. The roundtrip must succeed against the committed files; the
+    partials are inert.
+    """
+    trace, chunks = synthetic_trace_and_chunks
+    store = TraceStore(tmp_path)
+    store.write_trace(trace, chunks)
+
+    partition = store._partition_dir(trace.system_id, trace.dataset_id)
+    table_files = [
+        "traces.parquet",
+        "steps.parquet",
+        "generation_events.parquet",
+        "retrieval_events.parquet",
+        "chunk_appearances.parquet",
+    ]
+    for name in table_files:
+        committed = partition / name
+        assert committed.exists(), f"setup precondition failed: {committed} missing"
+        stale = partition / (name + ".partial")
+        stale.write_bytes(b"orphan bytes from a previous failed write")
+
+    read_back = store.read_trace(
+        trace.trace_id, system_id=trace.system_id, dataset_id=trace.dataset_id
+    )
+    assert read_back.trace_id == trace.trace_id
+    assert read_back.outputs_hash == trace.outputs_hash
+    assert read_back.inputs_hash == trace.inputs_hash
+    assert len(read_back.steps) == len(trace.steps)
+
+    # All orphan .partial files still on disk and untouched by the reader.
+    for name in table_files:
+        assert (partition / (name + ".partial")).exists()
