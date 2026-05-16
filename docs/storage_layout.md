@@ -106,6 +106,7 @@ Partition columns (`system_id`, `dataset_id`) are encoded in Hive-style director
 - `cached` `bool` (true if served from SQLite prompt cache)
 - `finish_reason` `string`
 - `logprobs_json` `string` (nullable; serialized if captured)
+- `tool_calls_json` `string` (nullable; canonical-JSON of the tuple of `ToolCall` records issued in this generation, added with schema v0.1.1)
 - `cost_usd` `float64`
 - `latency_ms` `float64`
 - `started_at` `timestamp[us, tz=UTC]`
@@ -133,6 +134,7 @@ Partition columns (`system_id`, `dataset_id`) are encoded in Hive-style director
 - `source_id` `string` (document ID in source corpus)
 - `source_offset_start`, `source_offset_end` `int64` (nullable)
 - `metadata_json` `string`
+- `token_count` `int32` (nullable; tokens in `text` per the generator's tokenizer at recording time; added with schema v0.1.1)
 - `first_seen_at` `timestamp[us, tz=UTC]`
 
 ### `chunk_appearances.parquet` (the many-to-many)
