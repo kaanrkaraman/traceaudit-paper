@@ -81,12 +81,23 @@ def test_second_write_failure_preserves_committed_first_trace(
 
     # Sanity: a `.partial` file may exist from the aborted rename, but the
     # store's reader never globs for it — only `<file>.parquet` is opened.
+    # We assert directory state directly: every committed file ends in
+    # `.parquet` (and belongs to trace1, same partition as trace2), and any
+    # `.partial` orphans from the aborted second write are present but
+    # ignored by the reader.
     partition = store._partition_dir(trace2.system_id, trace2.dataset_id)
     visible_parquets = list(partition.glob("*.parquet"))
-    for f in visible_parquets:
-        # All committed parquet files belong to trace1.
-        # (Same partition because the fixture uses the same system_id/dataset_id.)
-        assert ".partial" not in f.name
+    assert visible_parquets, "trace1 should have left at least traces.parquet"
+    partials = list(partition.glob("*.partial"))
+    assert partials, (
+        "expected at least one orphan .partial from the aborted second write; "
+        "if none is present the test is no longer exercising the coexistence case"
+    )
+    for f in partials:
+        assert f.name.endswith(".parquet.partial"), (
+            f"unexpected orphan file name {f.name!r}; only `<table>.parquet.partial` "
+            "is produced by _append_and_rename"
+        )
 
 
 def test_stale_partial_on_cold_store_is_invisible(tmp_path: Path) -> None:
