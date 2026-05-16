@@ -117,6 +117,16 @@ Approved 2026-05-14 at the schema review.
   - **Resolves:** schema follow-on from D14 / D16; no `open_questions.md` entry was open for it.
   - **Revisit if:** providers ship structured fields beyond `name` / `arguments_json` / `call_id` that the determinism witness should also pin (e.g. tool-call index disagreements between providers), or if symmetric `result_json` comparison becomes load-bearing for replay assertions.
 
+### Phase 0 build sequencing (D26)
+
+- **D26 — Build the SQLite prompt cache (5d) before the replayer (5c)** (2026-05-14)
+  - **Decision:** Reorder the Phase 0 implementation sequence from `5a → 5b → 5c → 5d → 5e → 5f → 5g` to `5a → 5b → 5d → 5c → 5e → 5f → 5g`. Step numbers retained for traceability across this file, `hypotheses.md`, and the brief; they no longer denote build order.
+  - **Reasoning (user):** the cache is isolatable and unit-testable in isolation; the replayer's contract is defined by the cache contract; the headline replayer test (byte-identical replay against a captured trace) is meaningless against a mock cache, so writing the replayer first would force either (a) shipping a mock that diverges from the real cache, or (b) blocking the replayer's headline test until 5d lands anyway. Building the cache first eliminates both.
+  - **How to apply:** the next implementation block is 5d (SQLite prompt cache). 5c (replayer) is unblocked once 5d's contract — including `ReplayCacheMissError` surfacing per D23, and the strict-replay vs. record-mode read paths per D21 — is fixed and unit-tested in isolation. 5c's headline determinism test is meaningful only against the real 5d cache, not a mock.
+  - **Companion to:** D21 (hybrid determinism contract), D23 (`ReplayCacheMissError` as the cache-miss-on-replay surface).
+  - **Resolves:** the cache-before-replayer-vs-replayer-before-cache scope question I flagged in the 5b handoff.
+  - **Revisit if:** never (one-shot sequencing decision; closed once 5c and 5d both land).
+
 ## Deferred items (known limitations, schema v0.1.x)
 
 - **DEFER-1 — `Chunk.metadata` stays an unschematized `dict[str, Any]` in schema v0.1.x.** Per-corpus expected keys (HotpotQA: `title`, `section`; FinanceBench / TAT-DQA: `is_table`, `table_id`, `row_idx`, `column_headers`; etc.) are documented in `docs/storage_layout.md` and validated at the dataset-loader boundary, not in the schema. Revisit in Phase 3 if the dict becomes a maintenance burden.
