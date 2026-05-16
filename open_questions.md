@@ -110,3 +110,19 @@ When a question is resolved, **do not delete it** — change `Status:` to `Resol
   3. Hybrid: cache-based determinism for closed-model replay paths; vLLM-based determinism for the swap-generator robustness path.
 - **Recommendation:** Option 3 (hybrid). Cache is the contract for closed models; vLLM for the open path.
 - **Status:** Resolved 2026-05-14 — see `decisions.md` D21.
+
+## Q11 — Adjacent CIKM '26 triple-robustness paper (anonymous submission)
+- **Opened:** 2026-05-14
+- **Phase:** spans 1, 2, 4 (cross-phase tracking; sub-parts close independently at their respective phases)
+- **Context:** A friend shared an anonymous CIKM 2026 submission titled "Universal Pathologies, Conditional Consequences: A Triple-Robustness Analysis of RAG for Multi-Hop Traceability." Methodologically orthogonal to TraceAudit — they vary embedder × corpus × judge while holding the architecture matrix fixed; we hold the architecture fixed and intervene on individual chunks. Different headline metric (ALCE citation P/R/F1 + multi-judge κ vs URR), different object of study (their five pipelines vs published agentic systems CRAG/IRCoT/Self-RAG/FLARE). Adjacent enough to cite, not adjacent enough to redirect.
+
+### Q11.a — Judge fragility risk to URR-judge headline
+Their C3 finding (GPT-5.4 same-judge self-κ = 0.137 across embedder swap on identical items, 41% verdict flips) is a direct threat to our GPT-4o judge contract (D02, D05). Mitigation to evaluate in Phase 2: pair GPT-4o with a Llama-3.1-70B-as-judge on the URR headline subset and report inter-judge agreement alongside the headline number. If agreement is poor, drop judge-URR from the headline and rely on F1-URR and EM-URR only. Calibration set work in Phase 1 should include a paired-judge sanity check before locking the judge contract.
+
+### Q11.b — MuSiQue subsample alignment
+We use `random_state=42` over MuSiQue dev (D08). They use a 200-query 2/3/4-hop stratified subset over Wikipedia paragraph chains with only `REFERENCES` edges. Once their paper hits arXiv (currently anonymous CIKM 2026 submission), revisit whether to: (a) keep our disjoint slice, (b) align to their slice for direct comparability on the 1-hop / 2-hop / 3+-hop strata they define, or (c) report both. No action today; decision deferred until their preprint is citable.
+
+### Q11.c — Framing paragraph for related work
+Once their paper is publicly citable, the related-work section needs an explicit positioning paragraph distinguishing axis-variation (their lever) from chunk-intervention (our lever). Their C2a (over-citation universal) and C2b (faithfulness consequence corpus-conditional) findings are consistent with — and provide empirical motivation for — our causal question of whether over-cited evidence is actually necessary. Save the proposed wording for Phase 4 draft.
+
+- **Status:** Open (cross-phase tracking entry; sub-parts close independently at their respective phases)
