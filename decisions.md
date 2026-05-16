@@ -127,6 +127,16 @@ Approved 2026-05-14 at the schema review.
   - **Resolves:** the cache-before-replayer-vs-replayer-before-cache scope question I flagged in the 5b handoff.
   - **Revisit if:** never (one-shot sequencing decision; closed once 5c and 5d both land).
 
+## Meta-decisions (process rules)
+
+- **D-META-1 — Decisions in tracking files, not chat** (2026-05-14)
+  - **Decision:** Any decision that touches code or schema must be recorded in `decisions.md` **before** the code instruction lands, not bundled into the instruction itself. The recorded entry comes first; the implementation references it.
+  - **Reasoning (user):** two pre-compact decisions — the Q11 framing (CIKM '26 adjacency) and the v0.1.2 `outputs_hash` bump — almost lost continuity across the compact boundary because they lived only in chat. Decisions in tracking files survive compacts and onboard new agents cleanly; decisions in chat do not.
+  - **Enforcement (agent-side):** when receiving a code instruction that implies a methodological choice not yet in `decisions.md`, stop and request the D-entry first. Do not infer the choice from context, do not bundle the implementation and the decision in the same commit unless the decision entry is explicitly written into `decisions.md` as part of that commit.
+  - **Scope:** any choice that pins behavior visible across a context boundary — schema versions, hash payload shapes, file layout conventions, error-handling contracts, build sequencing, dataset slicing rules, judge-model identities, and similar. Trivial implementation details (naming, formatting, internal helper signatures) are out of scope.
+  - **Resolves:** the near-miss continuity problems flagged at the compact handoff.
+  - **Revisit if:** the discipline becomes a friction point that blocks fast iteration on genuinely small choices — at which point we narrow the "Scope" list rather than abandon the rule.
+
 ## Deferred items (known limitations, schema v0.1.x)
 
 - **DEFER-1 — `Chunk.metadata` stays an unschematized `dict[str, Any]` in schema v0.1.x.** Per-corpus expected keys (HotpotQA: `title`, `section`; FinanceBench / TAT-DQA: `is_table`, `table_id`, `row_idx`, `column_headers`; etc.) are documented in `docs/storage_layout.md` and validated at the dataset-loader boundary, not in the schema. Revisit in Phase 3 if the dict becomes a maintenance burden.
