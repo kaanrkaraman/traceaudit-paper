@@ -106,6 +106,17 @@ Approved 2026-05-14 at the schema review.
   - **How to apply:** all imports use `traceaudit.*`; the `traceaudit` package root re-exports nothing (empty `__all__`) — consumers import from the leaf module they need.
   - **Revisit if:** never.
 
+### Schema v0.1.2 (D25)
+
+- **D25 — Tool calls in `outputs_hash`** (2026-05-14)
+  - **Decision:** Tool calls are part of the deterministic output of a generation event. Replay equality requires `response_text` byte-equality **and** `tool_calls` structural equality on (`name`, `arguments_json` under canonical-JSON, `call_id`); `result_json` is compared only when both sides have it. `compute_outputs_hash` is extended to cover `tool_calls`. Schema bumped 0.1.1 → 0.1.2.
+  - **Reasoning (user):** "ToolCall was captured structurally in v0.1.1 precisely to enable structural reasoning downstream; treating tool calls as opaque text in the determinism witness would defeat that choice and hide a real class of determinism failures inside response_text string comparison. Bump motivated now (before Phase 0 milestone) so the cache (5d) and replayer (5c) are written against the correct outputs_hash semantics from the start, not refactored after."
+  - **Hash payload (precise):** per generation event in trace order, the payload contributes `{"response_text": ev.response_text, "tool_calls": [{"name": tc.name, "arguments_json": tc.arguments_json, "call_id": tc.call_id} for tc in (ev.tool_calls or [])]}`. `result_json` is intentionally excluded — it may not be known at record time when a tool call is in flight, and including it would make `outputs_hash` unstable across replays where the tool's return value re-serializes differently.
+  - **Signature:** `compute_outputs_hash` accepts `GenerationEvent` objects directly; payload construction is internal to the function. Rationale: single source of truth for the hash payload shape — callers (recorder, fixture, future replayer assertions) cannot drift from each other on dict structure because they never construct the dicts.
+  - **Identity impact:** `outputs_hash` changes for every trace whose generation events have `tool_calls` populated. `trace_id`, `inputs_hash`, `config_hash` are unaffected — none depend on `outputs_hash` or on `tool_calls`. Pre-0.1.2 `outputs_hash` values cannot be compared directly against 0.1.2; would need recomputation. Today this is moot because the synthetic fixture is the only trace in existence.
+  - **Resolves:** schema follow-on from D14 / D16; no `open_questions.md` entry was open for it.
+  - **Revisit if:** providers ship structured fields beyond `name` / `arguments_json` / `call_id` that the determinism witness should also pin (e.g. tool-call index disagreements between providers), or if symmetric `result_json` comparison becomes load-bearing for replay assertions.
+
 ## Deferred items (known limitations, schema v0.1.x)
 
 - **DEFER-1 — `Chunk.metadata` stays an unschematized `dict[str, Any]` in schema v0.1.x.** Per-corpus expected keys (HotpotQA: `title`, `section`; FinanceBench / TAT-DQA: `is_table`, `table_id`, `row_idx`, `column_headers`; etc.) are documented in `docs/storage_layout.md` and validated at the dataset-loader boundary, not in the schema. Revisit in Phase 3 if the dict becomes a maintenance burden.

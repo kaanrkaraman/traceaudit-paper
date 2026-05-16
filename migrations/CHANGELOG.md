@@ -11,6 +11,35 @@ Semantic versioning:
 
 ---
 
+## 0.1.2 — 2026-05-14
+
+Approved as D25 in the compact-handoff briefing. Honest framing: technically
+a breaking change to the determinism witness — `outputs_hash` payload
+structure changes shape, and any 0.1.1 trace with non-`None` `tool_calls`
+would produce a different `outputs_hash` under 0.1.2 — but no real traces
+exist yet (only the synthetic test fixture), so a patch bump is honest about
+the schema state. Same reasoning as the 0.1.0 → 0.1.1 rename.
+
+- **`compute_outputs_hash`** — signature changed from
+  `(final_answer, generation_responses: list[str])` to
+  `(final_answer, generation_events: Iterable[GenerationEvent])`. Each event
+  now contributes `{"response_text": ev.response_text, "tool_calls": [{"name",
+  "arguments_json", "call_id"}, ...]}`. `tool_calls=None` collapses to `[]`
+  in the payload. `result_json` is intentionally excluded — it may not be
+  known at record time when a tool call is in flight, and re-serialization
+  variance would make the witness flap across replays. Outer wrapping is
+  still `canonical_json({"final_answer": ..., "generation_outputs": [...]})`.
+- **`SCHEMA_VERSION`** — `"0.1.1"` → `"0.1.2"`.
+- **`Trace.schema_version`** Literal — `"0.1.1"` → `"0.1.2"`.
+- **No field additions, renames, or removals. No new models. No validator changes.**
+
+**Identity impact.** `outputs_hash` changes for every trace whose generation
+events carry `tool_calls`. `trace_id`, `inputs_hash`, and `config_hash` are
+unaffected — none depend on `outputs_hash` or on `tool_calls`. Pre-0.1.2
+`outputs_hash` values cannot be compared directly against 0.1.2 and would
+need recomputation against the new semantics; today this is moot because
+the synthetic test fixture is the only trace in existence.
+
 ## 0.1.1 — 2026-05-14
 
 Approved at the Phase 0 schema review. Bumped while no traces existed; the

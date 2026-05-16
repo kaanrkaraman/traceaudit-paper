@@ -104,6 +104,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -120,7 +121,7 @@ from pydantic import (
 # Module constants
 # -----------------------------------------------------------------------------
 
-SCHEMA_VERSION: str = "0.1.1"
+SCHEMA_VERSION: str = "0.1.2"
 """Semantic version of this trace schema.
 
 - Major bump on any breaking change (field renamed, required field added,
@@ -694,7 +695,7 @@ class Trace(_Frozen):
     """
 
     trace_id: TraceId
-    schema_version: Literal["0.1.1"] = Field(
+    schema_version: Literal["0.1.2"] = Field(
         default=SCHEMA_VERSION,
         description="Bump in lockstep with the module-level SCHEMA_VERSION constant.",
     )
@@ -758,9 +759,12 @@ class Trace(_Frozen):
     )
     outputs_hash: str = Field(
         description=(
-            "SHA256 of canonical-JSON of (final_answer, [ev.response_text for ev in "
-            "all generation events in step order]). Determinism tests assert this "
-            "is byte-stable across replays."
+            "SHA256 of canonical-JSON of (final_answer, ordered per-event "
+            "{response_text, tool_calls}) — each event in step then "
+            "event_index_in_step order. tool_calls entries pin "
+            "(name, arguments_json, call_id); result_json is intentionally "
+            "excluded (may not be known at record time). Determinism tests "
+            "assert this is byte-stable across replays. See D25."
         ),
     )
 
@@ -878,10 +882,40 @@ def compute_inputs_hash(
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def compute_outputs_hash(*, final_answer: str, generation_responses: list[str]) -> str:
-    """Hash of (final_answer, ordered generation responses). The determinism witness."""
+def compute_outputs_hash(
+    *,
+    final_answer: str,
+    generation_events: Iterable[GenerationEvent],
+) -> str:
+    """Hash of (final_answer, ordered per-event {response_text, tool_calls}).
+
+    The determinism witness. Each generation event in trace order contributes
+    a dict with its `response_text` and the structural fields of its
+    `tool_calls` — `name`, `arguments_json` (already canonical-JSON at the
+    `ToolCall` boundary), and `call_id`. `tool_calls=None` becomes `[]` in
+    the payload (deterministic). `result_json` is intentionally excluded:
+    it may not be known at record time when a tool call is in flight, and
+    including it would make `outputs_hash` unstable across replays where
+    the tool's return value re-serializes the same content differently.
+    See D25 for the rationale on why structural tool-call equality must
+    be part of the determinism witness rather than folded into `response_text`.
+    """
+    outputs = [
+        {
+            "response_text": ev.response_text,
+            "tool_calls": [
+                {
+                    "name": tc.name,
+                    "arguments_json": tc.arguments_json,
+                    "call_id": tc.call_id,
+                }
+                for tc in (ev.tool_calls or [])
+            ],
+        }
+        for ev in generation_events
+    ]
     payload = canonical_json(
-        {"final_answer": final_answer, "generation_responses": generation_responses}
+        {"final_answer": final_answer, "generation_outputs": outputs}
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

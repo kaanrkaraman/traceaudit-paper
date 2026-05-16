@@ -247,12 +247,12 @@ class Recorder:
         total_cost = sum(
             ev.cost_usd for step in self._steps for ev in step.generation_events
         )
-        generation_responses = [
-            ev.response_text for step in self._steps for ev in step.generation_events
+        generation_events = [
+            ev for step in self._steps for ev in step.generation_events
         ]
         outputs_hash = compute_outputs_hash(
             final_answer=final_answer,
-            generation_responses=generation_responses,
+            generation_events=generation_events,
         )
 
         referenced_hashes = {

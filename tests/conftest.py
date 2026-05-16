@@ -238,7 +238,7 @@ def build_synthetic_trace(
     )
     outputs_hash = compute_outputs_hash(
         final_answer=final_response,
-        generation_responses=[gen1.response_text, gen2.response_text],
+        generation_events=[gen1, gen2],
     )
 
     trace = Trace(
